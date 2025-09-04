@@ -1,21 +1,69 @@
-import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Check, Download, Shield, Mail } from 'lucide-react';
-import { products } from '../data/products';
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, Check, Download, Shield, Mail } from "lucide-react";
+import { useCart } from "../context/CartContext";
 
 export default function CheckoutPage() {
-  const { id } = useParams();
-  const [email, setEmail] = useState('');
+  const { cart } = useCart();
+  const [email, setEmail] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  
-  const product = products.find(p => p.id === id);
 
-  if (!product) {
+  const formatPrice = (price_cents: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(price_cents);
+  };
+
+  const total = cart.reduce((sum, product) => sum + product.price_cents, 0);
+
+  const handlePayment = async () => {
+    if (!email) return;
+
+    setIsProcessing(true);
+
+    const paymentData = {
+      email: email,
+      items: cart.map((product) => ({
+        product_name: product.name,
+        product_price: product.price_cents,
+        product_quantity: 1, // Assuming quantity is always 1 for now
+      })),
+      total: total,
+    };
+
+    try {
+      await fetch(
+        "https://n8n-cdblhifcq3as.pempek.sumopod.my.id/webhook-test/payment",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(paymentData),
+        }
+      );
+    } catch (error) {
+      console.error("Error sending payment data to webhook:", error);
+      // Optionally, handle the error, e.g., show a message to the user
+    }
+
+    // Simulate payment processing
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    setIsProcessing(false);
+    setIsCompleted(true);
+  };
+
+  if (cart.length === 0 && !isCompleted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Produk Tidak Ditemukan</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Keranjang Anda Kosong
+          </h2>
           <Link to="/" className="text-blue-600 hover:text-blue-700">
             Kembali ke Beranda
           </Link>
@@ -23,26 +71,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0
-    }).format(price);
-  };
-
-  const handlePayment = async () => {
-    if (!email) return;
-    
-    setIsProcessing(true);
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsProcessing(false);
-    setIsCompleted(true);
-  };
 
   if (isCompleted) {
     return (
@@ -52,19 +80,22 @@ export default function CheckoutPage() {
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-8 h-8 text-green-600" />
             </div>
-            
+
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Pembayaran Berhasil!
             </h2>
-            
+
             <p className="text-gray-600 mb-6">
-              Terima kasih! Link download telah dikirim ke email <strong>{email}</strong>
+              Terima kasih! Link download telah dikirim ke email{" "}
+              <strong>{email}</strong>
             </p>
-            
+
             <div className="bg-blue-50 p-4 rounded-lg mb-6">
               <div className="flex items-center space-x-2 text-blue-800">
                 <Mail className="w-5 h-5" />
-                <span className="font-medium">Cek email Anda untuk link download</span>
+                <span className="font-medium">
+                  Cek email Anda untuk link download
+                </span>
               </div>
             </div>
 
@@ -73,8 +104,8 @@ export default function CheckoutPage() {
                 <Download className="w-4 h-4" />
                 <span>Download Sekarang</span>
               </button>
-              
-              <Link 
+
+              <Link
                 to="/"
                 className="w-full border border-gray-300 text-gray-700 py-3 px-6 rounded-xl hover:bg-gray-50 transition-colors font-medium text-center block"
               >
@@ -91,38 +122,48 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-gray-50 py-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Back Button */}
-        <Link 
-          to={`/product/${product.id}`}
+        <Link
+          to="/cart"
           className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors mb-8 group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          <span>Kembali ke Detail Produk</span>
+          <span>Kembali ke Keranjang</span>
         </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Order Summary */}
           <div className="bg-white rounded-2xl shadow-sm p-6 h-fit">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Ringkasan Pesanan</h2>
-            
-            <div className="flex space-x-4 mb-6">
-              <img 
-                src={product.image} 
-                alt={product.name}
-                className="w-20 h-20 object-cover rounded-lg"
-              />
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{product.name}</h3>
-                <p className="text-sm text-gray-600 mt-1">{product.category}</p>
-                <div className="text-lg font-bold text-blue-600 mt-2">
-                  {formatPrice(product.price)}
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Ringkasan Pesanan
+            </h2>
+
+            <div className="space-y-4">
+              {cart.map((product) => (
+                <div key={product.id} className="flex space-x-4">
+                  <img
+                    src={product.image_url}
+                    alt={product.name}
+                    className="w-20 h-20 object-cover rounded-lg"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900">
+                      {product.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {product.category}
+                    </p>
+                  </div>
+                  <div className="text-lg font-bold text-blue-600">
+                    {formatPrice(product.price_cents)}
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
+            <div className="border-t border-gray-200 pt-4 mt-6">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">Subtotal</span>
-                <span className="font-semibold">{formatPrice(product.price)}</span>
+                <span className="font-semibold">{formatPrice(total)}</span>
               </div>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">Pajak</span>
@@ -131,7 +172,9 @@ export default function CheckoutPage() {
               <div className="border-t border-gray-200 pt-2 mt-4">
                 <div className="flex justify-between items-center">
                   <span className="text-lg font-bold text-gray-900">Total</span>
-                  <span className="text-xl font-bold text-blue-600">{formatPrice(product.price)}</span>
+                  <span className="text-xl font-bold text-blue-600">
+                    {formatPrice(total)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -151,11 +194,16 @@ export default function CheckoutPage() {
 
           {/* Payment Form */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Informasi Pembeli</h2>
-            
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Informasi Pembeli
+            </h2>
+
             <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Email Address *
                 </label>
                 <input
@@ -172,35 +220,13 @@ export default function CheckoutPage() {
                 </p>
               </div>
 
-              {/* Payment Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Metode Pembayaran
-                </label>
-                <div className="space-y-3">
-                  <label className="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input type="radio" name="payment" value="bank" className="mr-3" defaultChecked />
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">Transfer Bank</div>
-                      <div className="text-sm text-gray-600">BCA, Mandiri, BNI, BRI</div>
-                    </div>
-                  </label>
-                  
-                  <label className="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    <input type="radio" name="payment" value="ewallet" className="mr-3" />
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">E-Wallet</div>
-                      <div className="text-sm text-gray-600">GoPay, OVO, DANA, ShopeePay</div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
               <div className="bg-blue-50 p-4 rounded-lg">
                 <div className="flex items-start space-x-2">
                   <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-blue-800">
-                    <strong>Jaminan 100% Aman:</strong> Transaksi Anda dilindungi dengan enkripsi SSL dan sistem pembayaran yang terpercaya.
+                    <strong>Jaminan 100% Aman:</strong> Transaksi Anda
+                    dilindungi dengan enkripsi SSL dan sistem pembayaran yang
+                    terpercaya.
                   </div>
                 </div>
               </div>
@@ -210,15 +236,19 @@ export default function CheckoutPage() {
                 disabled={!email || isProcessing}
                 className="w-full bg-blue-600 text-white py-4 px-6 rounded-xl hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-semibold text-lg shadow-lg hover:shadow-xl"
               >
-                {isProcessing ? 'Memproses...' : 'Bayar Sekarang'}
+                {isProcessing ? "Memproses..." : "Bayar Sekarang"}
               </button>
             </form>
 
             <div className="mt-6 text-center text-sm text-gray-500">
-              Dengan melakukan pembayaran, Anda menyetujui{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700">Syarat & Ketentuan</a>
-              {' '}dan{' '}
-              <a href="#" className="text-blue-600 hover:text-blue-700">Kebijakan Privasi</a>
+              Dengan melakukan pembayaran, Anda menyetujui{" "}
+              <a href="#" className="text-blue-600 hover:text-blue-700">
+                Syarat & Ketentuan
+              </a>{" "}
+              dan{" "}
+              <a href="#" className="text-blue-600 hover:text-blue-700">
+                Kebijakan Privasi
+              </a>
             </div>
           </div>
         </div>

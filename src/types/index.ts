@@ -1,14 +1,11 @@
 export interface Product {
   id: string;
   name: string;
+  slug: string;
   description: string;
-  price: number;
-  category: string;
-  image: string;
-  rating: number;
-  reviews: number;
-  features: string[];
-  downloadUrl: string;
+  price_cents: number;
+  image_url: string;
+  currency: string;
 }
 
 export interface Review {
