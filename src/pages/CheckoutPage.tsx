@@ -20,41 +20,34 @@ export default function CheckoutPage() {
   const total = cart.reduce((sum, product) => sum + product.price_cents, 0);
 
   const handlePayment = async () => {
-    if (!email) return;
-
     setIsProcessing(true);
-
-    const paymentData = {
-      email: email,
-      items: cart.map((product) => ({
-        product_name: product.name,
-        product_price: product.price_cents,
-        product_quantity: 1, // Assuming quantity is always 1 for now
-      })),
-      total: total,
-    };
-
     try {
-      await fetch(
-        "https://n8n-cdblhifcq3as.pempek.sumopod.my.id/webhook-test/payment",
+      const paymentData = {
+        email: email,
+        items: cart.map((product) => ({
+          name: product.name,
+          price: product.price_cents,
+          quantity: 1,
+        })),
+        total: total,
+      };
+      const response = await fetch(
+        "https://n8n-cdblhifcq3as.pempek.sumopod.my.id/webhook/payment",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(paymentData),
         }
       );
+      const result = await response.json();
+      if (result && result.invoice_url) {
+        window.location.href = result.invoice_url;
+        return;
+      }
     } catch (error) {
-      console.error("Error sending payment data to webhook:", error);
-      // Optionally, handle the error, e.g., show a message to the user
+      alert("Terjadi kesalahan saat proses pembayaran.");
     }
-
-    // Simulate payment processing
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
     setIsProcessing(false);
-    setIsCompleted(true);
   };
 
   if (cart.length === 0 && !isCompleted) {
